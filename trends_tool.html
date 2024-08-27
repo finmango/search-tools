@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Trends API Search Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; }
+        label { display: block; margin-top: 10px; }
+        input, select { width: 100%; padding: 8px; margin-top: 5px; }
+        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; margin-top: 10px; }
+        button:hover { background-color: #45a049; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Google Trends API Search Tool</h1>
+    <form id="searchForm">
+        <label for="keyword">Keyword:</label>
+        <input type="text" id="keyword" required>
+        
+        <label for="startTime">Start Time:</label>
+        <input type="date" id="startTime" required>
+        
+        <label for="endTime">End Time:</label>
+        <input type="date" id="endTime" required>
+        
+        <label for="geo">Geography:</label>
+        <input type="text" id="geo" placeholder="e.g., US" required>
+        
+        <button type="submit">Search</button>
+    </form>
+    
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const keyword = document.getElementById('keyword').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const geo = document.getElementById('geo').value;
+
+            try {
+                const response = await fetch('/api/trends', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keyword, startTime, endTime, geo })
+                });
+
+                if (!response.ok) throw new Error('API request failed');
+
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = '<p>Error fetching data. Please try again.</p>';
+            }
+        });
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>Results</h2>';
+
+            if (data && data.default && data.default.timelineData) {
+                const csvContent = generateCSV(data.default.timelineData);
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = 'trends_data.csv';
+                downloadLink.textContent = 'Download CSV';
+                resultsDiv.appendChild(downloadLink);
+            } else {
+                resultsDiv.innerHTML += '<p>No data available.</p>';
+            }
+        }
+
+        function generateCSV(data) {
+            const header = ['Date', 'Value'];
+            const rows = data.map(item => [item.formattedTime, item.value[0]]);
+            return [header, ...rows].map(row => row.join(',')).join('\n');
+        }
+    </script>
+</body>
+</html>
